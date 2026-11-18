@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -54,6 +55,7 @@ func methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 
 type application struct {
 	config *config
+	logger *log.Logger
 	conn   *pgxpool.Pool
 }
 

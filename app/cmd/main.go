@@ -8,9 +8,14 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/oskarscot/godrive/internal/database"
+	"github.com/oskarscot/godrive/migrations"
 )
 
 func run() error {
+	logger := log.Default()
+
 	databseURL := os.Getenv("DATABASE_URL")
 
 	if databseURL == "" {
@@ -38,9 +43,18 @@ func run() error {
 	application := &application{
 		config: config,
 		conn:   pool,
+		logger: logger,
 	}
 
-	log.Printf("Starting server at: %s\n", config.address)
+	db := stdlib.OpenDBFromPool(pool)
+	defer db.Close()
+
+	logger.Println("Checking migrations...")
+	if err = database.MigrateFS(db, migrations.FS, "."); err != nil {
+		return fmt.Errorf("Failed to migrate: %w", err)
+	}
+
+	logger.Printf("Starting server at: %s\n", config.address)
 
 	handler, err := application.mount(ctx)
 	if err != nil {
@@ -54,7 +68,7 @@ func main() {
 	log.SetFlags(log.LstdFlags)
 
 	if err := run(); err != nil {
-		log.Printf("Failed to start app: %v", err)
+		log.Printf("Failed to start app: %v\n", err)
 		os.Exit(1)
 	}
 }
