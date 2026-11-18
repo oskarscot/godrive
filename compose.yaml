@@ -9,6 +9,13 @@ services:
       - "5432:5432"
     volumes:
       - "postgres-data:/var/lib/postgresql"
+  floci:
+    image: "floci/floci:latest"
+    ports:
+      - "4566:4566"
+    volumes:
+      - "floci-data:/app/data"
 
 volumes:
   postgres-data:
+  floci-data:

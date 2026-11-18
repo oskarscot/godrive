@@ -17,7 +17,7 @@ func run() error {
 		return fmt.Errorf("DATABAS_URL is required")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	pool, err := pgxpool.New(ctx, databseURL)
@@ -42,7 +42,12 @@ func run() error {
 
 	log.Printf("Starting server at: %s\n", config.address)
 
-	return application.start(application.mount())
+	handler, err := application.mount(ctx)
+	if err != nil {
+		return err
+	}
+
+	return application.start(handler)
 }
 
 func main() {
