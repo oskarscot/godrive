@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oskarscot/godrive/internal/auth"
+	"github.com/oskarscot/godrive/internal/auth/session"
 	httpx "github.com/oskarscot/godrive/internal/platform"
 	"github.com/oskarscot/godrive/internal/user"
 )
@@ -24,7 +25,10 @@ func (a *application) mount(ctx context.Context, pool *pgxpool.Pool) (http.Handl
 	userHandler := user.NewHandler(userService)
 	userHandler.Setup(mux)
 
-	authService, err := auth.NewAuthService(ctx)
+	sessionRepository := session.NewSessionRepository(pool)
+	sessionService := session.NewSessionService(sessionRepository)
+
+	authService, err := auth.NewAuthService(ctx, sessionService)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to setup AuthService: %v\n", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/oskarscot/godrive/internal/auth/session"
 	"golang.org/x/oauth2"
 )
 
@@ -31,9 +32,10 @@ type AuthService struct {
 	GoogleConfig   oauth2.Config
 	GoogleProvider *oidc.Provider
 	GoogleVerifier *oidc.IDTokenVerifier
+	SessionService *session.SessionService
 }
 
-func NewAuthService(ctx context.Context) (*AuthService, error) {
+func NewAuthService(ctx context.Context, svc *session.SessionService) (*AuthService, error) {
 	provider, err := oidc.NewProvider(ctx, GoogleProviderUrl)
 	if err != nil {
 		return &AuthService{}, fmt.Errorf("Failed to setup AuthService: %w", err)
@@ -57,5 +59,6 @@ func NewAuthService(ctx context.Context) (*AuthService, error) {
 		GoogleConfig:   config,
 		GoogleProvider: provider,
 		GoogleVerifier: verifier,
+		SessionService: svc,
 	}, nil
 }

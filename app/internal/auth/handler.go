@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -82,18 +83,22 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	httpx.JSON(w, http.StatusOK, user)
+	opaque, err := h.svc.SessionService.CreateSession(ctx, user)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		httpx.Error(w, r, http.StatusInternalServerError, "authentication error", "failed to create session")
+		return
+	}
 
-	// TODO: set up a session
-	// cookie := http.Cookie{
-	// 	Name:     "__Host-session",
-	// 	Value:    string(val),
-	// 	Path:     "/",
-	// 	MaxAge:   0,
-	// 	HttpOnly: true,
-	// 	Secure:   true,
-	// 	SameSite: http.SameSiteLaxMode,
-	// }
+	cookie := http.Cookie{
+		Name:     "__Host-session",
+		Value:    opaque,
+		Path:     "/",
+		MaxAge:   0,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
 
-	// http.SetCookie(w, &cookie)
+	http.SetCookie(w, &cookie)
 }
