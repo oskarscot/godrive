@@ -15,6 +15,7 @@ type ResponseEnvelope struct {
 // Status is the numeric HTTP responswe code
 // Title is a short human readable description about the error
 // Detail represents the detailed error, can be a map or any structure that can be represented by json
+// Instance represents the http endpoint that was being accessed
 //
 // More info: https://www.rfc-editor.org/info/rfc9457/
 type ProblemDetail struct {

@@ -2,20 +2,21 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	httpx "github.com/oskarscot/godrive/internal/platform"
+	"github.com/oskarscot/godrive/internal/user"
 	"golang.org/x/oauth2"
 )
 
 type Handler struct {
-	svc *AuthService
+	svc     *AuthService
+	userSvc *user.Service
 }
 
-func NewAuthHandler(svc *AuthService) *Handler {
-	return &Handler{svc: svc}
+func NewAuthHandler(svc *AuthService, userSvc *user.Service) *Handler {
+	return &Handler{svc: svc, userSvc: userSvc}
 }
 
 func (h *Handler) Setup(mux *chi.Mux) {
@@ -39,7 +40,6 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 
 	token, err := h.svc.GoogleConfig.Exchange(ctx, code)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
 		httpx.Error(w, r, http.StatusInternalServerError, "authentication error", "unable to exchange token with provider")
 		return
 	}
@@ -49,19 +49,42 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 	resp, err := client.Get(GoogleUserInfo)
 
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
 		httpx.Error(w, r, http.StatusInternalServerError, "authentication error", "unable to retrieve user data from the provider")
 		return
 	}
 
-	var user GoogleUser
-	if err = json.NewDecoder(resp.Body).Decode(&user); err != nil {
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		httpx.Error(w, r, http.StatusBadGateway, "authentication error", "provider returned an unsuccessful user info response")
+		return
+	}
+
+	var googleUser GoogleUser
+	if err = json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
 		httpx.Error(w, r, http.StatusUnprocessableEntity, "authentication error", "unable to parse user data from the provider")
 
 		return
 	}
 
-	// TODO: create our own user and set up a session
+	if googleUser.ID == "" {
+		httpx.Error(w, r, http.StatusBadGateway, "authentication error", "provider response is missing the user identity")
+		return
+	}
+
+	user, err := h.userSvc.FindOrCreate(ctx, user.FindOrCreateInput{
+		GoogleSub:  googleUser.ID,
+		Email:      googleUser.Email,
+		PictureURL: googleUser.PictureURL,
+	})
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "authentication error", "unable to find or create user")
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, user)
+
+	// TODO: set up a session
 	// cookie := http.Cookie{
 	// 	Name:     "__Host-session",
 	// 	Value:    string(val),

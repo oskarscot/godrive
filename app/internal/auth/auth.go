@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	GoogleUserInfo     string = "https://www.googleapis.com/oauth2/v2/userinfo"
+	GoogleUserInfo     string = "https://openidconnect.googleapis.com/v1/userinfo"
 	GoogleProfileScope string = "https://www.googleapis.com/auth/userinfo.profile"
 	GoogleEmailScope   string = "https://www.googleapis.com/auth/userinfo.email"
 	GoogleTokenUrl     string = "https://oauth2.googleapis.com/token"

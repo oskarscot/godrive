@@ -15,7 +15,7 @@ type User struct {
 	ID        uuid.UUID
 	GoogleSub string
 	Email     string
-	Picture   string
+	Picture   *string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

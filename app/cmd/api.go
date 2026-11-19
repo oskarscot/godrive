@@ -14,21 +14,23 @@ import (
 	"github.com/oskarscot/godrive/internal/user"
 )
 
-func (a *application) mount(ctx context.Context) (http.Handler, error) {
+func (a *application) mount(ctx context.Context, pool *pgxpool.Pool) (http.Handler, error) {
 	mux := chi.NewMux()
 
 	mux.Use(middleware.Logger)
+
+	userRepository := user.NewPostgresRepository(pool)
+	userService := user.NewService(userRepository)
+	userHandler := user.NewHandler(userService)
+	userHandler.Setup(mux)
 
 	authService, err := auth.NewAuthService(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to setup AuthService: %v\n", err)
 	}
 
-	authHandler := auth.NewAuthHandler(authService)
+	authHandler := auth.NewAuthHandler(authService, userService)
 	authHandler.Setup(mux)
-
-	userHandler := user.NewHandler()
-	userHandler.Setup(mux)
 
 	mux.NotFound(notFoundHandler)
 	mux.MethodNotAllowed(methodNotAllowedHandler)

@@ -56,7 +56,7 @@ func run() error {
 
 	logger.Printf("Starting server at: %s\n", config.address)
 
-	handler, err := application.mount(ctx)
+	handler, err := application.mount(ctx, pool)
 	if err != nil {
 		return err
 	}

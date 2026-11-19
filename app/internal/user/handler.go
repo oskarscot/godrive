@@ -7,10 +7,11 @@ import (
 )
 
 type Handler struct {
+	service *Service
 }
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(svc *Service) *Handler {
+	return &Handler{service: svc}
 }
 
 func (h *Handler) Setup(mux *chi.Mux) {

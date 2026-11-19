@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     google_sub TEXT UNIQUE NOT NULL,
     email TEXT NOT NULL,
     picture TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 )
 -- +goose StatementEnd
 
