@@ -12,10 +12,10 @@ var (
 )
 
 type User struct {
-	ID        uuid.UUID
-	GoogleSub string
-	Email     string
-	Picture   *string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uuid.UUID `json:"id"`
+	GoogleSub string    `json:"google_sub"`
+	Email     string    `json:"email"`
+	Picture   *string   `json:"picture"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

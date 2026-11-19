@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oskarscot/godrive/internal/auth"
 	"github.com/oskarscot/godrive/internal/auth/session"
+
 	httpx "github.com/oskarscot/godrive/internal/platform"
 	"github.com/oskarscot/godrive/internal/user"
 )
@@ -20,11 +21,6 @@ func (a *application) mount(ctx context.Context, pool *pgxpool.Pool) (http.Handl
 
 	mux.Use(middleware.Logger)
 
-	userRepository := user.NewPostgresRepository(pool)
-	userService := user.NewService(userRepository)
-	userHandler := user.NewHandler(userService)
-	userHandler.Setup(mux)
-
 	sessionRepository := session.NewSessionRepository(pool)
 	sessionService := session.NewSessionService(sessionRepository)
 
@@ -32,6 +28,14 @@ func (a *application) mount(ctx context.Context, pool *pgxpool.Pool) (http.Handl
 	if err != nil {
 		return nil, fmt.Errorf("Failed to setup AuthService: %v\n", err)
 	}
+
+	userRepository := user.NewPostgresRepository(pool)
+	userService := user.NewService(userRepository)
+	userHandler := user.NewHandler(userService)
+	mux.Group(func(r chi.Router) {
+		r.Use(sessionService.RequireSession)
+		userHandler.Setup(r)
+	})
 
 	authHandler := auth.NewAuthHandler(authService, userService)
 	authHandler.Setup(mux)

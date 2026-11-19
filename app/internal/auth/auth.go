@@ -16,6 +16,7 @@ const (
 	GoogleEmailScope   string = "https://www.googleapis.com/auth/userinfo.email"
 	GoogleTokenUrl     string = "https://oauth2.googleapis.com/token"
 	GoogleProviderUrl  string = "https://accounts.google.com"
+	AuthCookie         string = session.CookieName
 )
 
 type GoogleUser struct {

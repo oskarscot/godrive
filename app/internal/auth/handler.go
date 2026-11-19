@@ -20,7 +20,7 @@ func NewAuthHandler(svc *AuthService, userSvc *user.Service) *Handler {
 	return &Handler{svc: svc, userSvc: userSvc}
 }
 
-func (h *Handler) Setup(mux *chi.Mux) {
+func (h *Handler) Setup(mux chi.Router) {
 	mux.Get("/auth/google", h.startGoogleLogin)
 	mux.Get("/auth/google/callback", h.googleCallbackHandler)
 }
@@ -91,7 +91,7 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cookie := http.Cookie{
-		Name:     "__Host-session",
+		Name:     AuthCookie,
 		Value:    opaque,
 		Path:     "/",
 		MaxAge:   0,
@@ -101,4 +101,5 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, "/user/me", http.StatusSeeOther)
 }
