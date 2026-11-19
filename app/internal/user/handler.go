@@ -1,10 +1,12 @@
 package user
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	httpx "github.com/oskarscot/godrive/internal/platform"
+	"github.com/oskarscot/godrive/internal/requestctx"
 )
 
 type Handler struct {
@@ -20,5 +22,21 @@ func (h *Handler) Setup(r chi.Router) {
 }
 
 func (h *Handler) userInfo(w http.ResponseWriter, r *http.Request) {
-	httpx.JSON(w, http.StatusOK, "Login Success")
+	ctx := r.Context()
+	id, ok := requestctx.UserIDFromContext(ctx)
+	if !ok {
+		httpx.Error(w, r, http.StatusUnauthorized, "unauthorized", "unable to retrieve session")
+		return
+	}
+
+	user, err := h.service.FindUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			httpx.Error(w, r, http.StatusUnauthorized, "user not found", "no user found for the specified id")
+			return
+		}
+		httpx.Error(w, r, http.StatusInternalServerError, "unauthorized", "unable to retrieve user details")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, user)
 }
