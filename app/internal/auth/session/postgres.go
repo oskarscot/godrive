@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -70,4 +71,18 @@ func (r *SessionRepository) GetSessionByHash(ctx context.Context, hash string) (
 		return Session{}, err
 	}
 	return session, nil
+}
+
+func (r *SessionRepository) DeleteSessionsForUser(ctx context.Context, id uuid.UUID) error {
+	query := `
+	DELETE FROM sessions
+	WHERE user_id = $1
+	`
+
+	_, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete sessions: %w", err)
+	}
+
+	return nil
 }

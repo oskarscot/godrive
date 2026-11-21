@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/oskarscot/godrive/internal/user"
 )
 
 type Repository interface {
 	CreateSession(ctx context.Context, session *Session) (*Session, error)
 	GetSessionByHash(ctx context.Context, hash string) (Session, error)
+	DeleteSessionsForUser(ctx context.Context, id uuid.UUID) error
 }
 
 type SessionService struct {
@@ -48,6 +50,10 @@ func (s *SessionService) CreateSession(ctx context.Context, user user.User) (str
 		return "", fmt.Errorf("failed to create session: %w", err)
 	}
 	return token, nil
+}
+
+func (s *SessionService) DeleteSessionsForUser(ctx context.Context, id uuid.UUID) error {
+	return s.repository.DeleteSessionsForUser(ctx, id)
 }
 
 func generateSessionToken() (string, [32]byte, error) {

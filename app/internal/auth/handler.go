@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	httpx "github.com/oskarscot/godrive/internal/platform"
+	"github.com/oskarscot/godrive/internal/requestctx"
 	"github.com/oskarscot/godrive/internal/user"
 	"golang.org/x/oauth2"
 )
@@ -23,6 +24,7 @@ func NewAuthHandler(svc *AuthService, userSvc *user.Service) *Handler {
 func (h *Handler) Setup(mux chi.Router) {
 	mux.Get("/auth/google", h.startGoogleLogin)
 	mux.Get("/auth/google/callback", h.googleCallbackHandler)
+	mux.With(h.svc.SessionService.RequireSession).Get("/auth/logout", h.logoutHandler)
 }
 
 func (h *Handler) startGoogleLogin(w http.ResponseWriter, r *http.Request) {
@@ -102,4 +104,39 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 
 	http.SetCookie(w, &cookie)
 	http.Redirect(w, r, "/user/me", http.StatusSeeOther)
+}
+
+func (h *Handler) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, ok := requestctx.UserIDFromContext(ctx)
+	if !ok {
+		httpx.Error(w, r, http.StatusUnauthorized, "unauthorized", "no session found")
+		return
+	}
+
+	_, err := r.Cookie(AuthCookie)
+	if err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, "invalid cookie", "missing authorization cookie")
+		return
+	}
+
+	err = h.svc.SessionService.DeleteSessionsForUser(ctx, id)
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "internal error", "unable to delete sessions")
+		return
+	}
+
+	cookie := http.Cookie{
+		Name:     AuthCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &cookie)
+
+	httpx.JSON(w, http.StatusOK, "successfully logged out")
 }
