@@ -2,16 +2,17 @@ package session
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/oskarscot/godrive/internal/user"
+	"github.com/oskarscot/godrive/internal/util"
 )
+
+const CookieName = "__Host-session"
 
 type Repository interface {
 	CreateSession(ctx context.Context, session *Session) (*Session, error)
@@ -19,22 +20,22 @@ type Repository interface {
 	DeleteSessionsForUser(ctx context.Context, id uuid.UUID) error
 }
 
-type SessionService struct {
+type Service struct {
 	repository Repository
 }
 
-func NewSessionService(r Repository) *SessionService {
-	return &SessionService{repository: r}
+func NewSessionService(r Repository) *Service {
+	return &Service{repository: r}
 }
 
-func (s *SessionService) FindSessionFromToken(ctx context.Context, token string) (Session, error) {
+func (s *Service) FindSessionFromToken(ctx context.Context, token string) (Session, error) {
 	hash := sha256.Sum256([]byte(token))
 
 	return s.repository.GetSessionByHash(ctx, hex.EncodeToString(hash[:]))
 }
 
-func (s *SessionService) CreateSession(ctx context.Context, user user.User) (string, error) {
-	token, hash, err := generateSessionToken()
+func (s *Service) CreateSession(ctx context.Context, user user.User) (string, error) {
+	token, hash, err := util.GenerateToken()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -52,18 +53,6 @@ func (s *SessionService) CreateSession(ctx context.Context, user user.User) (str
 	return token, nil
 }
 
-func (s *SessionService) DeleteSessionsForUser(ctx context.Context, id uuid.UUID) error {
+func (s *Service) DeleteSessionsForUser(ctx context.Context, id uuid.UUID) error {
 	return s.repository.DeleteSessionsForUser(ctx, id)
-}
-
-func generateSessionToken() (string, [32]byte, error) {
-	var randomBytes [32]byte
-	if _, err := rand.Read(randomBytes[:]); err != nil {
-		return "", [32]byte{}, err
-	}
-
-	token := base64.RawURLEncoding.EncodeToString(randomBytes[:])
-	hash := sha256.Sum256([]byte(token))
-
-	return token, hash, nil
 }

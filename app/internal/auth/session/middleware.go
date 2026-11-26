@@ -9,9 +9,7 @@ import (
 	"github.com/oskarscot/godrive/internal/requestctx"
 )
 
-const CookieName = "__Host-session"
-
-func (s *SessionService) RequireSession(next http.Handler) http.Handler {
+func (s *Service) RequireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(CookieName)
 		if err != nil || cookie.Value == "" {

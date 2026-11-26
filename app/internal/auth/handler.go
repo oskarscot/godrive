@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oskarscot/godrive/internal/auth/flow"
 	httpx "github.com/oskarscot/godrive/internal/platform"
 	"github.com/oskarscot/godrive/internal/requestctx"
 	"github.com/oskarscot/godrive/internal/user"
+	"github.com/oskarscot/godrive/internal/util"
 	"golang.org/x/oauth2"
 )
 
@@ -28,7 +31,33 @@ func (h *Handler) Setup(mux chi.Router) {
 }
 
 func (h *Handler) startGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	url := h.svc.GoogleConfig.AuthCodeURL("state", oauth2.AccessTypeOffline)
+	state, err := util.RandomToken()
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "server error", "could not generate token, try again")
+		return
+	}
+
+	ctx := r.Context()
+	verifier := oauth2.GenerateVerifier()
+	created, token, err := h.svc.AuthFlowService.CreateFlow(ctx, state, verifier)
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "server error", "could not start auth flow")
+		return
+	}
+
+	cookie := &http.Cookie{
+		Name:     flow.AuthFlowCookie,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(time.Until(created.ExpiresAt).Seconds()),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, cookie)
+
+	url := h.svc.GoogleConfig.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
@@ -39,9 +68,39 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	state := r.URL.Query().Get("state")
+	if state == "" {
+		httpx.Error(w, r, http.StatusBadRequest, "bad request", "state is missing from the URL path")
+		return
+	}
+
 	ctx := r.Context()
 
-	token, err := h.svc.GoogleConfig.Exchange(ctx, code)
+	flowCookie, err := r.Cookie(flow.AuthFlowCookie)
+	if err != nil {
+		httpx.Error(w, r, http.StatusUnauthorized, "unauthorized", "invalid credentials")
+		return
+	}
+
+	authFlow, err := h.svc.AuthFlowService.CompleteFlow(ctx, flowCookie.Value, state)
+	if err != nil {
+		httpx.Error(w, r, http.StatusUnauthorized, "unauthorized", "unable to find authentication flow for this session")
+		return
+	}
+
+	cookie := http.Cookie{
+		Name:     flow.AuthFlowCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &cookie)
+
+	token, err := h.svc.GoogleConfig.Exchange(ctx, code, oauth2.VerifierOption(authFlow.PKCEVerifier))
 	if err != nil {
 		httpx.Error(w, r, http.StatusInternalServerError, "authentication error", "unable to exchange token with provider")
 		return
@@ -92,7 +151,7 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	cookie := http.Cookie{
+	sessionCookie := &http.Cookie{
 		Name:     AuthCookie,
 		Value:    opaque,
 		Path:     "/",
@@ -102,7 +161,7 @@ func (h *Handler) googleCallbackHandler(w http.ResponseWriter, r *http.Request) 
 		SameSite: http.SameSiteLaxMode,
 	}
 
-	http.SetCookie(w, &cookie)
+	http.SetCookie(w, sessionCookie)
 	http.Redirect(w, r, "/user/me", http.StatusSeeOther)
 }
 
