@@ -19,7 +19,7 @@ func NewFlowRepository(pool *pgxpool.Pool) *FlowRepository {
 	return &FlowRepository{pool: pool}
 }
 
-func (r *FlowRepository) CompleteFlow(ctx context.Context, token string, state string) (Flow, error) {
+func (r *FlowRepository) CompleteFlow(ctx context.Context, tokenHash string, state string) (Flow, error) {
 	query := `
 	DELETE FROM auth_flow
 	WHERE token_hash = $1
@@ -32,13 +32,13 @@ func (r *FlowRepository) CompleteFlow(ctx context.Context, token string, state s
 	err := r.pool.QueryRow(
 		ctx,
 		query,
-		token,
+		tokenHash,
 		state,
 	).Scan(
 		&flow.ID,
 		&flow.ExpectedState,
 		&flow.PKCEVerifier,
-		&flow.CreateAt,
+		&flow.CreatedAt,
 		&flow.ExpiresAt,
 	)
 
@@ -46,7 +46,7 @@ func (r *FlowRepository) CompleteFlow(ctx context.Context, token string, state s
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Flow{}, ErrFlowNotFound
 		}
-		return Flow{}, fmt.Errorf("failed to find auth flow: %w", err)
+		return Flow{}, fmt.Errorf("complete auth flow: %w", err)
 	}
 
 	return flow, nil
@@ -68,7 +68,7 @@ func (r *FlowRepository) CreateFlow(ctx context.Context, flow *Flow) (*Flow, err
 		flow.ExpiresAt,
 	).Scan(
 		&flow.ID,
-		&flow.CreateAt,
+		&flow.CreatedAt,
 	)
 
 	if err != nil {

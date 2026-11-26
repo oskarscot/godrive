@@ -12,7 +12,7 @@ import (
 
 type Repository interface {
 	CreateFlow(ctx context.Context, flow *Flow) (*Flow, error)
-	CompleteFlow(ctx context.Context, token string, state string) (Flow, error)
+	CompleteFlow(ctx context.Context, tokenHash string, state string) (Flow, error)
 }
 
 type Service struct {

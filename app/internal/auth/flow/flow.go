@@ -19,6 +19,6 @@ type Flow struct {
 	TokenHash     string
 	ExpectedState string
 	PKCEVerifier  string
-	CreateAt      time.Time
+	CreatedAt     time.Time
 	ExpiresAt     time.Time
 }

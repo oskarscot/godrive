@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,8 +13,7 @@ import (
 	"github.com/oskarscot/godrive/internal/auth"
 	"github.com/oskarscot/godrive/internal/auth/flow"
 	"github.com/oskarscot/godrive/internal/auth/session"
-
-	httpx "github.com/oskarscot/godrive/internal/platform"
+	"github.com/oskarscot/godrive/internal/httpx"
 	"github.com/oskarscot/godrive/internal/user"
 )
 
@@ -28,21 +28,28 @@ func (a *application) mount(ctx context.Context, pool *pgxpool.Pool) (http.Handl
 	flowRepository := flow.NewFlowRepository(pool)
 	flowService := flow.NewFlowService(flowRepository)
 
-	authService, err := auth.NewAuthService(ctx, sessionService, flowService)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to setup AuthService: %v\n", err)
-	}
-
 	userRepository := user.NewPostgresRepository(pool)
 	userService := user.NewService(userRepository)
 	userHandler := user.NewHandler(userService)
+
+	authConfig := auth.Config{
+		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_SECRET"),
+		RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
+	}
+	authService, err := auth.NewService(ctx, authConfig, userService, sessionService, flowService)
+	if err != nil {
+		return nil, fmt.Errorf("set up authentication: %w", err)
+	}
+
+	authHandler := auth.NewHandler(authService)
+	authHandler.Setup(mux)
+
 	mux.Group(func(r chi.Router) {
 		r.Use(sessionService.RequireSession)
 		userHandler.Setup(r)
+		authHandler.SetupProtected(r)
 	})
-
-	authHandler := auth.NewAuthHandler(authService, userService)
-	authHandler.Setup(mux)
 
 	mux.NotFound(notFoundHandler)
 	mux.MethodNotAllowed(methodNotAllowedHandler)

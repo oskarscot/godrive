@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	httpx "github.com/oskarscot/godrive/internal/platform"
+	"github.com/oskarscot/godrive/internal/httpx"
 	"github.com/oskarscot/godrive/internal/requestctx"
 )
 

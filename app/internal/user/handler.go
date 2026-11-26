@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	httpx "github.com/oskarscot/godrive/internal/platform"
+	"github.com/oskarscot/godrive/internal/httpx"
 	"github.com/oskarscot/godrive/internal/requestctx"
 )
 

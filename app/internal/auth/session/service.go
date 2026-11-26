@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/oskarscot/godrive/internal/user"
 	"github.com/oskarscot/godrive/internal/util"
 )
 
@@ -34,7 +33,7 @@ func (s *Service) FindSessionFromToken(ctx context.Context, token string) (Sessi
 	return s.repository.GetSessionByHash(ctx, hex.EncodeToString(hash[:]))
 }
 
-func (s *Service) CreateSession(ctx context.Context, user user.User) (string, error) {
+func (s *Service) CreateSession(ctx context.Context, userID uuid.UUID) (string, error) {
 	token, hash, err := util.GenerateToken()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
@@ -43,7 +42,7 @@ func (s *Service) CreateSession(ctx context.Context, user user.User) (string, er
 	expiry := time.Now().UTC().Add(15 * time.Minute)
 	session := Session{
 		TokenHash: hex.EncodeToString(hash[:]),
-		UserID:    user.ID,
+		UserID:    userID,
 		ExpiresAt: &expiry,
 	}
 	_, err = s.repository.CreateSession(ctx, &session)
